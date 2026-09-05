@@ -352,7 +352,7 @@ export function MapaInterativo() {
   ));
 
   return (
-    <section className="mapa-interativo gov-container p-0 flex-1 flex flex-col min-h-0 lg:h-[calc(100vh-7rem)]">
+    <section className="mapa-interativo gov-container p-0 flex flex-col min-h-0 lg:h-[calc(100vh-7rem)]">
       <div className="flex flex-col flex-1 min-h-0 lg:flex-row overflow-hidden rounded-xl border border-gray-200 bg-white">
         <aside className="flex flex-col border-r border-gray-200 bg-white p-4 lg:min-h-0 lg:w-96 lg:shrink-0">
           <header className="shrink-0">
