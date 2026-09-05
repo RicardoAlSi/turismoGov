@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bússola — Localizador de Atrações Turísticas</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<style>
+  :root{
+    --bg: #F3EBDA;
+    --bg-panel: #FBF7EE;
+    --ink: #1E2B27;
+    --ink-soft: #58655F;
+    --ocean: #0E4F5C;
+    --ocean-dark: #0A3A44;
+    --lagoon: #2F9E8F;
+    --lagoon-dark: #21766B;
+    --clay: #C15A34;
+    --clay-dark: #A24726;
+    --line: #DED0AC;
+    --white: #FFFFFF;
+    --radius: 10px;
+  }
+
+  *, *::before, *::after{ box-sizing: border-box; }
+
+  html, body{
+    height: 100%;
+    margin: 0;
+  }
+
+  body{
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3{
+    font-family: 'Fraunces', Georgia, serif;
+    margin: 0;
+    font-weight: 600;
+  }
+
+  a{ color: var(--ocean); }
+
+  button{ font-family: inherit; }
+
+  /* ---------- Layout ---------- */
+  .app{
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    height: 100vh;
+  }
+
+  .panel{
+    background: var(--bg-panel);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-scroll{
+    overflow-y: auto;
+    padding: 28px 26px 20px;
+    flex: 1;
+  }
+
+  .map-wrap{
+    position: relative;
+    background: #D9E4E2;
+  }
+
+  #map{
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ---------- Brand ---------- */
+  .brand{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+
+  .brand-mark{
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--ocean);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .brand-mark svg{ width: 22px; height: 22px; }
+
+  .brand h1{
+    font-size: 1.5rem;
+    letter-spacing: -0.01em;
+    color: var(--ocean-dark);
+  }
+
+  .brand p{
+    margin: 2px 0 0;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- Form ---------- */
+  .field{
+    margin-bottom: 14px;
+  }
+
+  .field label{
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+  }
+
+  .field input,
+  .field select{
+    width: 100%;
+    padding: 11px 12px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    color: var(--ink);
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .field input:focus,
+  .field select:focus{
+    border-color: var(--ocean);
+    box-shadow: 0 0 0 3px rgba(14,79,92,0.12);
+  }
+
+  .field-row{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .btn-buscar{
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--ocean);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    font-size: 0.98rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: background 0.15s ease;
+  }
+
+  .btn-buscar:hover{ background: var(--ocean-dark); }
+  .btn-buscar:disabled{ background: #9BAEB0; cursor: not-allowed; }
+
+  .download-section{
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+
+  .btn-download{
+    width: 100%;
+    padding: 10px 16px;
+    background: var(--clay);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .btn-download:hover{ background: var(--clay-dark); }
+  .btn-download:disabled{ background: #C4A882; cursor: not-allowed; }
+
+  .download-status{
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    line-height: 1.4;
+    min-height: 1.2em;
+  }
+
+  .download-status.erro{ color: #C15A34; }
+
+  .data-source{
+    margin-top: 6px;
+    font-size: 0.72rem;
+    color: var(--lagoon-dark);
+    font-weight: 500;
+    min-height: 1em;
+  }
+
+  /* ---------- Results ---------- */
+  .results-header{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin: 26px 0 12px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+
+  .results-header h2{
+    font-size: 1.05rem;
+    color: var(--ocean-dark);
+  }
+
+  .results-count{
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+  }
+
+  .state-box{
+    padding: 30px 16px;
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  .state-box strong{
+    display: block;
+    color: var(--ink);
+    font-family: 'Fraunces', serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .spinner{
+    width: 30px;
+    height: 30px;
+    margin: 0 auto 14px;
+    border: 3px solid var(--line);
+    border-top-color: var(--ocean);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  .result-list{
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .result-item{
+    display: flex;
+    gap: 12px;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 15px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .result-item:hover,
+  .result-item.active{
+    border-color: var(--lagoon);
+    box-shadow: 0 2px 10px rgba(14,79,92,0.10);
+  }
+
+  .result-badge{
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--ocean);
+    color: var(--white);
+    font-size: 0.78rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .result-body h3{
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 3px;
+  }
+
+  .result-category{
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--lagoon-dark);
+    background: rgba(47,158,143,0.12);
+    border-radius: 5px;
+    padding: 2px 7px;
+    margin-bottom: 6px;
+  }
+
+  .result-desc{
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    line-height: 1.45;
+    margin: 0 0 8px;
+  }
+
+  .result-link{
+    display: inline-block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--ocean);
+    text-decoration: none;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 5px 10px;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .result-link:hover{
+    background: var(--bg);
+    border-color: var(--ocean);
+  }
+
+  .panel-footer{
+    padding: 14px 26px;
+    border-top: 1px solid var(--line);
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    line-height: 1.4;
+  }
+
+  /* ---------- Leaflet marker ---------- */
+  .poi-marker-inner{
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--ocean);
+    color: var(--white);
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--white);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  }
+
+  .popup-body strong{
+    font-family: 'Fraunces', serif;
+    font-size: 0.98rem;
+  }
+
+  .popup-body .popup-category{
+    display: block;
+    font-size: 0.75rem;
+    color: var(--lagoon-dark);
+    margin: 2px 0 6px;
+  }
+
+  .popup-body a{
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 900px){
+    .app{
+      display: flex;
+      flex-direction: column;
+      height: auto;
+      min-height: 100vh;
+    }
+    .panel{
+      border-right: none;
+      border-bottom: 1px solid var(--line);
+    }
+    .panel-scroll{
+      max-height: 60vh;
+    }
+    .map-wrap{
+      height: 46vh;
+    }
+    .field-row{
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .spinner{ animation: none; border-top-color: var(--line); }
+    .result-item{ transition: none; }
+  }
+
+  :focus-visible{
+    outline: 2px solid var(--ocean);
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="panel">
+    <div class="panel-scroll">
+
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="9" stroke="white" stroke-width="1.6"/>
+            <path d="M15 9L13 13L9 15L11 11L15 9Z" fill="white"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Bússola</h1>
+          <p>Encontre atrações turísticas em qualquer cidade do Brasil</p>
+        </div>
+      </div>
+
+      <form id="searchForm">
+        <div class="field">
+          <label for="cidade">Cidade</label>
+          <input type="text" id="cidade" name="cidade" placeholder="Ex.: São Luís" autocomplete="off" required>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="uf">Estado</label>
+            <select id="uf" name="uf"></select>
+          </div>
+          <div class="field">
+            <label for="categoria">Categoria</label>
+            <select id="categoria" name="categoria">
+              <option value="todos">Todos</option>
+              <option value="geral">Atrações turísticas gerais</option>
+              <option value="historico">Pontos históricos e igrejas</option>
+              <option value="natureza">Belezas naturais, cachoeiras e mirantes</option>
+              <option value="museus">Museus e cultura</option>
+              <option value="lazer">Lazer e parques</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-buscar" id="btnBuscar">Buscar</button>
+      </form>
+
+      <div class="download-section">
+        <button type="button" class="btn-download" id="btnDownload">Baixar todos os pontos do Brasil</button>
+        <div class="download-status" id="downloadStatus"></div>
+      </div>
+
+      <div class="data-source" id="dataSource"></div>
+
+      <div class="results-header">
+        <h2>Resultados</h2>
+        <span class="results-count" id="resultsCount"></span>
+      </div>
+
+      <div id="resultsArea">
+        <div class="state-box" id="emptyState">
+          <strong>Comece sua busca</strong>
+          Digite o nome de uma cidade e escolha o estado para descobrir atrações turísticas próximas.
+        </div>
+      </div>
+
+    </div>
+
+    <div class="panel-footer">
+      Dados fornecidos pela comunidade OpenStreetMap via Overpass API. Cobertura e detalhes variam conforme o mapeamento de cada região.
+    </div>
+  </aside>
+
+  <main class="map-wrap">
+    <div id="map"></div>
+  </main>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+
+  /* ---------------------------------------------------------
+     Estados brasileiros — Maranhão em destaque, demais em ordem alfabética
+  --------------------------------------------------------- */
+  const ESTADOS = [
+    { sigla: 'MA', nome: 'Maranhão' },
+    { sigla: 'AC', nome: 'Acre' },
+    { sigla: 'AL', nome: 'Alagoas' },
+    { sigla: 'AP', nome: 'Amapá' },
+    { sigla: 'AM', nome: 'Amazonas' },
+    { sigla: 'BA', nome: 'Bahia' },
+    { sigla: 'CE', nome: 'Ceará' },
+    { sigla: 'DF', nome: 'Distrito Federal' },
+    { sigla: 'ES', nome: 'Espírito Santo' },
+    { sigla: 'GO', nome: 'Goiás' },
+    { sigla: 'MT', nome: 'Mato Grosso' },
+    { sigla: 'MS', nome: 'Mato Grosso do Sul' },
+    { sigla: 'MG', nome: 'Minas Gerais' },
+    { sigla: 'PA', nome: 'Pará' },
+    { sigla: 'PB', nome: 'Paraíba' },
+    { sigla: 'PR', nome: 'Paraná' },
+    { sigla: 'PE', nome: 'Pernambuco' },
+    { sigla: 'PI', nome: 'Piauí' },
+    { sigla: 'RJ', nome: 'Rio de Janeiro' },
+    { sigla: 'RN', nome: 'Rio Grande do Norte' },
+    { sigla: 'RS', nome: 'Rio Grande do Sul' },
+    { sigla: 'RO', nome: 'Rondônia' },
+    { sigla: 'RR', nome: 'Roraima' },
+    { sigla: 'SC', nome: 'Santa Catarina' },
+    { sigla: 'SP', nome: 'São Paulo' },
+    { sigla: 'SE', nome: 'Sergipe' },
+    { sigla: 'TO', nome: 'Tocantins' }
+  ];
+
+  const ufSelect = document.getElementById('uf');
+  ESTADOS.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e.sigla;
+    opt.textContent = `${e.nome} (${e.sigla})`;
+    ufSelect.appendChild(opt);
+  });
+
+  /* ---------------------------------------------------------
+     Categorias -> chaves/valores do OpenStreetMap
+     valor null significa "qualquer valor para essa chave"
+  --------------------------------------------------------- */
+  const CATEGORIA_FILTROS = {
+    geral: [
+      ['tourism', 'attraction'],
+      ['tourism', 'artwork'],
+      ['tourism', 'gallery'],
+      ['tourism', 'theme_park'],
+      ['tourism', 'zoo'],
+      ['tourism', 'aquarium'],
+      ['tourism', 'picnic_site'],
+      ['tourism', 'yes'],
+      ['tourism', 'information'],
+      ['place', 'square']
+    ],
+    historico: [
+      ['historic', null],
+      ['amenity', 'place_of_worship'],
+      ['man_made', 'lighthouse'],
+      ['man_made', 'bridge'],
+      ['amenity', 'marketplace'],
+      ['amenity', 'fountain']
+    ],
+    natureza: [
+      ['natural', 'waterfall'],
+      ['waterway', 'waterfall'],
+      ['tourism', 'viewpoint'],
+      ['natural', 'beach'],
+      ['natural', 'cave_entrance'],
+      ['natural', 'peak'],
+      ['natural', 'cliff'],
+      ['natural', 'spring'],
+      ['natural', 'sand'],
+      ['natural', 'reef'],
+      ['natural', 'bare_rock'],
+      ['natural', 'stone'],
+      ['natural', 'geosite'],
+      ['natural', 'sinkhole'],
+      ['natural', 'water'],
+      ['waterway', 'rapids'],
+      ['tourism', 'camp_site'],
+      ['leisure', 'nature_reserve'],
+      ['leisure', 'swimming_area'],
+      ['boundary', 'national_park'],
+      ['boundary', 'protected_area']
+    ],
+    museus: [
+      ['tourism', 'museum'],
+      ['amenity', 'arts_centre'],
+      ['amenity', 'theatre'],
+      ['amenity', 'cinema'],
+      ['amenity', 'events_venue'],
+      ['amenity', 'library'],
+      ['amenity', 'community_centre']
+    ],
+    lazer: [
+      ['leisure', 'park'],
+      ['leisure', 'garden'],
+      ['leisure', 'water_park'],
+      ['leisure', 'beach_resort'],
+      ['man_made', 'tower']
+    ]
+  };
+  CATEGORIA_FILTROS.todos = [
+    ...CATEGORIA_FILTROS.geral,
+    ...CATEGORIA_FILTROS.historico,
+    ...CATEGORIA_FILTROS.natureza,
+    ...CATEGORIA_FILTROS.museus,
+    ...CATEGORIA_FILTROS.lazer
+  ];
+
+  const RAIO_KM = 15;
+
+  function montarQuery(lat, lon, categoria){
+    const filtros = CATEGORIA_FILTROS[categoria] || CATEGORIA_FILTROS.todos;
+
+    const clausulas = filtros.map(([chave, valor]) => {
+      const seletor = valor ? `["${chave}"="${valor}"]` : `["${chave}"]`;
+      return `  node${seletor}(around:${RAIO_KM * 1000},${lat},${lon});\n  way${seletor}(around:${RAIO_KM * 1000},${lat},${lon});\n  relation${seletor}(around:${RAIO_KM * 1000},${lat},${lon});`;
+    }).join('\n');
+
+    return `[out:json][timeout:25];
+(
+${clausulas}
+);
+out center tags;`;
+  }
+
+  /* ---------------------------------------------------------
+     Rótulos legíveis por categoria OSM
+  --------------------------------------------------------- */
+  const ROTULOS_HISTORICOS = {
+    church: 'Igreja histórica',
+    monument: 'Monumento',
+    memorial: 'Memorial',
+    castle: 'Fortaleza',
+    fort: 'Forte',
+    ruins: 'Ruínas',
+    building: 'Edificação histórica',
+    archaeological_site: 'Sítio arqueológico',
+    monastery: 'Mosteiro/Convento',
+    wayside_shrine: 'Capelinha de beira de estrada',
+    wayside_cross: 'Cruzeiro',
+    wreck: 'Naufrágio',
+    city_gate: 'Portão histórico',
+    manor: 'Solar / Mansão',
+    farm: 'Fazenda histórica',
+    mine: 'Mina histórica',
+    heritage: 'Bem tombado',
+    railway_station: 'Estação ferroviária',
+    house: 'Casa histórica',
+    milestone: 'Marco histórico'
+  };
+
+  function categoriaDoItem(tags){
+    if (tags.tourism === 'attraction') return 'Atração turística';
+    if (tags.tourism === 'artwork') return 'Arte pública';
+    if (tags.tourism === 'gallery') return 'Galeria de arte';
+    if (tags.tourism === 'theme_park') return 'Parque temático';
+    if (tags.tourism === 'zoo') return 'Zoológico';
+    if (tags.tourism === 'aquarium') return 'Aquário';
+    if (tags.tourism === 'picnic_site') return 'Local de piquenique';
+    if (tags.tourism === 'information') return 'Posto de turismo';
+    if (tags.tourism === 'camp_site') return 'Área de camping';
+    if (tags.tourism === 'viewpoint') return 'Mirante';
+    if (tags.tourism === 'museum') return 'Museu';
+    if (tags.historic) return ROTULOS_HISTORICOS[tags.historic] || 'Ponto histórico';
+    if (tags.amenity === 'place_of_worship') return 'Igreja / templo';
+    if (tags.natural === 'waterfall') return 'Cachoeira';
+    if (tags.natural === 'beach') return 'Praia';
+    if (tags.natural === 'cave_entrance') return 'Caverna';
+    if (tags.natural === 'peak') return 'Pico / Montanha';
+    if (tags.natural === 'cliff') return 'Penhasco';
+    if (tags.natural === 'spring') return 'Nascente / Fonte termal';
+    if (tags.natural === 'sand') return 'Dunas';
+    if (tags.natural === 'reef') return 'Recife de coral';
+    if (tags.natural === 'bare_rock') return 'Rocha notável';
+    if (tags.natural === 'stone') return 'Pedra notável';
+    if (tags.natural === 'geosite') return 'Sítio geológico';
+    if (tags.natural === 'sinkhole') return 'Furna / Dolina';
+    if (tags.natural === 'water') return 'Corpo d\'água';
+    if (tags.waterway === 'waterfall') return 'Cachoeira';
+    if (tags.waterway === 'rapids') return 'Corredeiras';
+    if (tags.leisure === 'park') return 'Parque urbano';
+    if (tags.leisure === 'nature_reserve') return 'Reserva natural';
+    if (tags.leisure === 'garden') return 'Jardim';
+    if (tags.leisure === 'water_park') return 'Parque aquático';
+    if (tags.leisure === 'beach_resort') return 'Complexo de praia';
+    if (tags.leisure === 'swimming_area') return 'Área de banho';
+    if (tags.boundary === 'national_park') return 'Parque Nacional';
+    if (tags.boundary === 'protected_area') return 'Área protegida';
+    if (tags.amenity === 'arts_centre') return 'Centro cultural';
+    if (tags.amenity === 'theatre') return 'Teatro';
+    if (tags.amenity === 'cinema') return 'Cinema';
+    if (tags.amenity === 'events_venue') return 'Local de eventos';
+    if (tags.amenity === 'library') return 'Biblioteca';
+    if (tags.amenity === 'community_centre') return 'Centro comunitário';
+    if (tags.amenity === 'marketplace') return 'Feira / Mercado';
+    if (tags.amenity === 'fountain') return 'Fonte';
+    if (tags.man_made === 'lighthouse') return 'Farol';
+    if (tags.man_made === 'bridge') return 'Ponte';
+    if (tags.man_made === 'tower') return 'Torre / Mirante';
+    if (tags.place === 'square') return 'Praça';
+    return 'Ponto turístico';
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : String(str);
+    return div.innerHTML;
+  }
+
+  function urlGoogleMaps(lat, lon){
+    return `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+  }
+
+  /* ---------------------------------------------------------
+     Mapa Leaflet
+  --------------------------------------------------------- */
+  const map = L.map('map', { zoomControl: true }).setView([-4.9, -45.3], 7);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">colaboradores OpenStreetMap</a>'
+  }).addTo(map);
+
+  let markerLayer = L.layerGroup().addTo(map);
+  let markersById = {};
+
+  function criarIcone(numero){
+    return L.divIcon({
+      className: 'poi-marker',
+      html: `<div class="poi-marker-inner">${numero}</div>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+      popupAnchor: [0, -14]
+    });
+  }
+
+  /* ---------------------------------------------------------
+     Estados visuais do painel de resultados
+  --------------------------------------------------------- */
+  const resultsArea = document.getElementById('resultsArea');
+  const resultsCount = document.getElementById('resultsCount');
+  const btnBuscar = document.getElementById('btnBuscar');
+
+  function mostrarCarregando(cidade){
+    resultsCount.textContent = '';
+    resultsArea.innerHTML = `
+      <div class="state-box">
+        <div class="spinner"></div>
+        Buscando atrações em ${escapeHtml(cidade)}...
+      </div>`;
+  }
+
+  function mostrarErro(mensagem){
+    resultsCount.textContent = '';
+    resultsArea.innerHTML = `
+      <div class="state-box">
+        <strong>Não foi possível concluir a busca</strong>
+        ${escapeHtml(mensagem)}
+      </div>`;
+  }
+
+  function mostrarSemResultados(cidade, uf){
+    resultsCount.textContent = '';
+    resultsArea.innerHTML = `
+      <div class="state-box">
+        <strong>Nenhum resultado encontrado</strong>
+        Não encontramos atrações para "${escapeHtml(cidade)} (${escapeHtml(uf)})". Confira se o nome da cidade está escrito como no cadastro oficial (IBGE) e tente novamente.
+      </div>`;
+  }
+
+  function renderizarResultados(pois){
+    resultsCount.textContent = `${pois.length} encontrado${pois.length === 1 ? '' : 's'}`;
+
+    const lista = document.createElement('ul');
+    lista.className = 'result-list';
+
+    pois.forEach((poi, index) => {
+      const numero = index + 1;
+      const li = document.createElement('li');
+      li.className = 'result-item';
+      li.dataset.id = poi.id;
+
+      li.innerHTML = `
+        <div class="result-badge">${numero}</div>
+        <div class="result-body">
+          <h3>${escapeHtml(poi.nome)}</h3>
+          <span class="result-category">${escapeHtml(poi.categoria)}</span>
+          ${poi.descricao ? `<p class="result-desc">${escapeHtml(poi.descricao)}</p>` : ''}
+          <a class="result-link" href="${urlGoogleMaps(poi.lat, poi.lon)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no Google Maps</a>
+        </div>`;
+
+      li.addEventListener('click', () => {
+        document.querySelectorAll('.result-item').forEach(el => el.classList.remove('active'));
+        li.classList.add('active');
+        map.flyTo([poi.lat, poi.lon], 17, { duration: 0.8 });
+        const marker = markersById[poi.id];
+        if (marker) marker.openPopup();
+      });
+
+      lista.appendChild(li);
+    });
+
+    resultsArea.innerHTML = '';
+    resultsArea.appendChild(lista);
+  }
+
+  /* ---------------------------------------------------------
+     Processamento dos elementos retornados pela Overpass API
+  --------------------------------------------------------- */
+  function processarElementos(elementos){
+    const vistos = new Set();
+    const pois = [];
+
+    elementos.forEach(el => {
+      const tags = el.tags || {};
+      if (!tags.name) return;
+
+      const lat = el.type === 'node' ? el.lat : (el.center ? el.center.lat : null);
+      const lon = el.type === 'node' ? el.lon : (el.center ? el.center.lon : null);
+      if (lat == null || lon == null) return;
+
+      const chave = tags.name + '|' + lat.toFixed(5) + ',' + lon.toFixed(5);
+      if (vistos.has(chave)) return;
+      vistos.add(chave);
+
+      pois.push({
+        id: `${el.type}/${el.id}`,
+        nome: tags.name,
+        categoria: categoriaDoItem(tags),
+        descricao: tags.description || tags['description:pt'] || '',
+        lat, lon
+      });
+    });
+
+    pois.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    return pois.slice(0, 80);
+  }
+
+  function atualizarMapa(pois){
+    markerLayer.clearLayers();
+    markersById = {};
+
+    if (pois.length === 0) return;
+
+    const bounds = [];
+
+    pois.forEach((poi, index) => {
+      const marker = L.marker([poi.lat, poi.lon], { icon: criarIcone(index + 1) });
+      marker.bindPopup(`
+        <div class="popup-body">
+          <strong>${escapeHtml(poi.nome)}</strong>
+          <span class="popup-category">${escapeHtml(poi.categoria)}</span>
+          <a href="${urlGoogleMaps(poi.lat, poi.lon)}" target="_blank" rel="noopener">Ver no Google Maps</a>
+        </div>`);
+      marker.addTo(markerLayer);
+      markersById[poi.id] = marker;
+      bounds.push([poi.lat, poi.lon]);
+    });
+
+    if (bounds.length === 1) {
+      map.flyTo(bounds[0], 15, { duration: 0.8 });
+    } else {
+      map.flyToBounds(bounds, { padding: [40, 40], duration: 0.8, maxZoom: 15 });
+    }
+  }
+
+  /* ---------------------------------------------------------
+     Consulta à base local ou Overpass API (fallback)
+  --------------------------------------------------------- */
+  const LOCAL_API_BASE = window.location.origin;
+  const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
+  const NOMINATIM_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
+  const dataSourceEl = document.getElementById('dataSource');
+
+  function exibirFonteDados(fonte) {
+    if (fonte === 'local') {
+      dataSourceEl.textContent = 'Dados da base local';
+    } else if (fonte === 'overpass') {
+      dataSourceEl.textContent = 'Dados em tempo real (Overpass API)';
+    } else {
+      dataSourceEl.textContent = '';
+    }
+  }
+
+  async function buscarLocal(cidade, uf, categoria) {
+    const params = new URLSearchParams({ cidade, estado: uf, categoria });
+    const resp = await fetch(`${LOCAL_API_BASE}/api/pontos?${params}`);
+    if (!resp.ok) throw new Error('API local não disponível');
+    const dados = await resp.json();
+    if (dados.fonte === 'indisponivel') throw new Error('Base de dados não encontrada');
+    return dados.resultados || [];
+  }
+
+  async function geocodificarCidade(cidade, uf){
+    const params = new URLSearchParams({
+      q: `${cidade}, ${uf}, Brasil`,
+      format: 'json',
+      countrycodes: 'br',
+      limit: '5'
+    });
+    const resp = await fetch(`${NOMINATIM_ENDPOINT}?${params}`, {
+      headers: { 'Accept-Language': 'pt-BR' }
+    });
+    if (!resp.ok) throw new Error('Falha ao localizar a cidade.');
+    const resultados = await resp.json();
+    if (resultados.length === 0) throw new Error(`Cidade "${cidade}" (${uf}) não encontrada. Verifique o nome e tente novamente.`);
+
+    const ufLower = uf.toLowerCase();
+    const match = resultados.find(r => {
+      const display = (r.display_name || '').toLowerCase();
+      return display.includes(ufLower);
+    }) || resultados[0];
+
+    return { lat: parseFloat(match.lat), lon: parseFloat(match.lon) };
+  }
+
+  async function buscarAtracoes(cidade, uf, categoria){
+    try {
+      const locais = await buscarLocal(cidade, uf, categoria);
+      if (locais.length > 0) {
+        exibirFonteDados('local');
+        return locais;
+      }
+    } catch (e) {
+      // Base local indisponível, usar Overpass
+    }
+
+    exibirFonteDados('overpass');
+    const { lat, lon } = await geocodificarCidade(cidade, uf);
+    const query = montarQuery(lat, lon, categoria);
+
+    const resposta = await fetch(OVERPASS_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(query)
+    });
+
+    if (!resposta.ok) {
+      throw new Error('O servidor Overpass não respondeu corretamente (status ' + resposta.status + '). Tente novamente em alguns instantes.');
+    }
+
+    const dados = await resposta.json();
+    return processarElementos(dados.elements || []);
+  }
+
+  /* ---------------------------------------------------------
+     Envio do formulário
+  --------------------------------------------------------- */
+  const form = document.getElementById('searchForm');
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const cidade = document.getElementById('cidade').value.trim();
+    const uf = document.getElementById('uf').value;
+    const categoria = document.getElementById('categoria').value;
+
+    if (!cidade) return;
+
+    btnBuscar.disabled = true;
+    btnBuscar.textContent = 'Buscando...';
+    mostrarCarregando(cidade);
+    markerLayer.clearLayers();
+
+    try {
+      const pois = await buscarAtracoes(cidade, uf, categoria);
+
+      if (pois.length === 0) {
+        mostrarSemResultados(cidade, uf);
+      } else {
+        renderizarResultados(pois);
+        atualizarMapa(pois);
+      }
+    } catch (erro) {
+      console.error(erro);
+      mostrarErro(erro.message || 'Verifique sua conexão e tente novamente.');
+    } finally {
+      btnBuscar.disabled = false;
+      btnBuscar.textContent = 'Buscar';
+    }
+  });
+
+  /* ---------------------------------------------------------
+     Verificar status da base local ao carregar
+  --------------------------------------------------------- */
+  async function verificarStatusLocal() {
+    try {
+      const resp = await fetch(`${LOCAL_API_BASE}/api/status`);
+      const dados = await resp.json();
+      if (dados.disponivel) {
+        const data = new Date(dados.ultimaAtualizacao);
+        const dataFormatada = data.toLocaleDateString('pt-BR') + ' ' + data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        exibirFonteDados('local');
+        downloadStatusEl.textContent = `Base local: ${dados.totalPontos} pontos (${dataFormatada})`;
+      }
+    } catch (e) {
+      // Servidor não está rodando ou sem dados
+    }
+  }
+
+  /* ---------------------------------------------------------
+     Download de todos os pontos do Brasil
+  --------------------------------------------------------- */
+  const btnDownload = document.getElementById('btnDownload');
+  const downloadStatusEl = document.getElementById('downloadStatus');
+
+  btnDownload.addEventListener('click', async () => {
+    btnDownload.disabled = true;
+    btnDownload.textContent = 'Baixando...';
+    downloadStatusEl.className = 'download-status';
+    downloadStatusEl.textContent = 'Iniciando download via servidor...';
+
+    try {
+      const resp = await fetch(`${LOCAL_API_BASE}/api/atualizar`, { method: 'POST' });
+      const dados = await resp.json();
+
+      if (resp.ok) {
+        downloadStatusEl.textContent = 'Download concluído! A base de dados foi atualizada.';
+        verificarStatusLocal();
+      } else {
+        downloadStatusEl.className = 'download-status erro';
+        downloadStatusEl.textContent = `Erro: ${dados.erro || 'Falha ao atualizar'}`;
+      }
+    } catch (e) {
+      downloadStatusEl.className = 'download-status erro';
+      downloadStatusEl.textContent = 'Erro: Servidor não está rodando. Execute "node serve.js" primeiro.';
+    } finally {
+      btnDownload.disabled = false;
+      btnDownload.textContent = 'Baixar todos os pontos do Brasil';
+    }
+  });
+
+  verificarStatusLocal();
+
+})();
+</script>
+</body>
+</html>

@@ -1,26 +1,178 @@
+/* Ordem das camadas de cascata. O CSS core do GovBR-DS entra na
+   camada "dsg" (antes de "utilities") para que as utilitárias do
+   Tailwind prevaleçam — regras unlayered vencem qualquer @layer,
+   então sem isso o core sobrescreve utilitárias como font-extrabold. */
+@layer theme, base, components, dsg, utilities;
+
+/* Fontes oficiais do GovBR Design System */
+@import url("https://fonts.cdnfonts.com/css/rawline");
+@import url("https://fonts.googleapis.com/css?family=Raleway:300,400,500,600,700,800,900&display=swap");
+
+/* Ícones utilizados pelos componentes GovBR-DS */
+@import "@fortawesome/fontawesome-free/css/all.min.css";
+
+/* CSS core do GovBR Design System — define todos os tokens
+   (cor, tipografia, espaçamento, elevação) usados pelos componentes.
+   Não sobrescrever variáveis deste arquivo. */
+@import "@govbr-ds/core/dist/core.min.css" layer(dsg);
+
+/* Mapas (Leaflet + MarkerCluster) usados na página /mapa-interativo */
+@import "leaflet/dist/leaflet.css";
+@import "leaflet.markercluster/dist/MarkerCluster.css";
+@import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+body {
+  font-family: "Rawline", sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Utilitário local: aplica o container institucional
+   usado nas seções da página, respeitando a largura
+   máxima recomendada pelo DSG para conteúdo textual. */
+.gov-container {
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: 1rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@media (min-width: 768px) {
+  .gov-container {
+    padding-inline: 2rem;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Sidebar de navegação principal.
+   Desktop: ocupa largura própria e empurra o conteúdo quando aberta.
+   Celular (≤768px): sobrepõe o conteúdo (slide lateral) e mostra um
+   backdrop para fechar ao tocar fora. Em ambos os casos o header
+   fica acima dela, disponível para fechar. */
+.app-sidebar {
+  width: 0;
+  overflow: hidden;
+  background: #fff;
+  flex-shrink: 0;
+  transition: width 300ms ease-in-out;
+}
+
+.sidebar-open .app-sidebar {
+  width: 18rem;
+  border-right: 1px solid #e5e7eb;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+}
+
+.app-backdrop {
+  display: none;
+}
+
+/* Título dos cards de destino: uma única linha com reticências
+   quando o nome do local ultrapassa a largura do card.
+   O BrCard renderiza título+subtítulo numa div flex item dentro de
+   `.card-header .d-flex`; como flex item tem `min-width: auto`,
+   ela não encolhe abaixo do texto — por isso o encolhimento
+   (`min-width: 0`) precisa ser aplicado nela, e o truncamento
+   (nowrap + ellipsis) no próprio título `.text-up-02`. */
+.destinations-grid .br-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.destinations-grid .card-content {
+  order: -1;
+}
+
+.destinations-grid .card-header .d-flex > div {
+  min-width: 0;
+}
+
+.destinations-grid .text-up-02 {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 767.98px) {
+  .app-sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    width: 18rem;
+    transform: translateX(-100%);
+    transition: transform 300ms ease-in-out;
+  }
+
+  .sidebar-open .app-sidebar {
+    transform: translateX(0);
+  }
+
+  .sidebar-open .app-backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    background: rgb(0 0 0 / 0.4);
+  }
+}
+
+/* ---------- Mapa Interativo ---------- */
+.map-leaflet {
+  z-index: 0;
+}
+
+.poi-marker {
+  background: transparent;
+  border: none;
+}
+
+.poi-marker-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: #1351b4;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+}
+
+.poi-marker-inner:after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  background: #1351b4;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: translateX(-50%) rotate(-45deg);
+}
+
+.poi-row {
+  position: relative;
+  z-index: 1;
+}
+
+.leaflet-popup-content .poi-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.leaflet-popup-content .poi-popup a {
+  margin-top: 4px;
+  color: #1351b4;
+}
+
+.leaflet-container {
+  z-index: 0;
+  font-family: "Rawline", sans-serif;
 }
